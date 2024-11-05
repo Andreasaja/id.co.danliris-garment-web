@@ -25,6 +25,9 @@ using System.Reflection;
 using System.Text;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Manufactures.Application.AzureUtility;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using System;
 
 namespace DanLiris.Admin.Web
 {
@@ -188,10 +191,16 @@ namespace DanLiris.Admin.Web
                     };
                 });
             #endregion
+            var keyVaultEnpoint = new Uri(configuration["VaultKey"]);
+            var secretClient = new SecretClient(keyVaultEnpoint, new DefaultAzureCredential());
+            
+            KeyVaultSecret kvsDB = secretClient.GetSecret(configuration["VaultKeyDbSecret"]);
+            KeyVaultSecret kvsServer = secretClient.GetSecret(configuration["VaultKeyServerSecret"]);
 
+            var concatVault = string.Concat(kvsDB.Value, kvsServer.Value);
             services.Configure<StorageContextOptions>(options =>
             {
-                options.ConnectionString = this.configuration.GetConnectionString("Default");
+                options.ConnectionString = concatVault;
                 options.MigrationsAssembly = typeof(DesignTimeStorageContextFactory).GetTypeInfo().Assembly.FullName;
             }
             );
